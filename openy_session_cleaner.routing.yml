@@ -1,0 +1,7 @@
+openy_session_cleaner.settings:
+  path: '/admin/config/system/session-cleaner-settings'
+  defaults:
+    _form: '\Drupal\openy_session_cleaner\Form\CleanerSettingsForm'
+    _title: 'Open Y cleaner settings'
+  requirements:
+    _permission: 'administer site configuration'

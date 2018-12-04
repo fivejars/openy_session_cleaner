@@ -1,0 +1,7 @@
+openy_session_cleaner.config:
+  type: config_object
+  label: 'Open Y Sessions cleaner config'
+  mapping:
+    limit:
+      type: text
+      label: 'Items per cron run'
