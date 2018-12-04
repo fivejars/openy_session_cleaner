@@ -1,0 +1,25 @@
+<?php
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function openy_session_cleaner_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.openy_session_cleaner':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('The module removes the classes without upcoming sessions.') . '</p>';
+      return $output;
+  }
+}
+
+/**
+ * Implements hook_cron().
+ */
+function openy_session_cleaner_cron() {
+  /** @var Drupal\openy_session_cleaner\SessionCleaner $cleaner */
+  $cleaner = \Drupal::service('openy_session_cleaner.cleaner');
+  $cleaner->clean();
+}

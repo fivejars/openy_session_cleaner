@@ -1,0 +1,4 @@
+services:
+  openy_session_cleaner.cleaner:
+    class: Drupal\openy_session_cleaner\SessionCleaner
+    arguments: ['@database', '@entity_type.manager','@logger.factory']
