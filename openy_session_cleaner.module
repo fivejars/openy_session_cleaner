@@ -1,6 +1,8 @@
 <?php
 
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\openy_importer\ImporterWrapper;
 
 /**
  * Implements hook_help().
@@ -19,7 +21,26 @@ function openy_session_cleaner_help($route_name, RouteMatchInterface $route_matc
  * Implements hook_cron().
  */
 function openy_session_cleaner_cron() {
-  /** @var Drupal\openy_session_cleaner\SessionCleaner $cleaner */
-  $cleaner = \Drupal::service('openy_session_cleaner.cleaner');
-  $cleaner->clean();
+  /** @var \Drupal\Core\Lock\LockBackendInterface $lock */
+  $lock = \Drupal::service('lock');
+  if ($lock->lockMayBeAvailable(ImporterWrapper::LOCK_NAME)) {
+    /** @var Drupal\openy_session_cleaner\SessionCleaner $cleaner */
+    $cleaner = \Drupal::service('openy_session_cleaner.cleaner');
+    $cleaner->clean();
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_delete().
+ */
+function openy_session_cleaner_node_delete(EntityInterface $entity) {
+  // Clean up migrate mapping after removing of any session or class.
+  // So node can be imported one more time if needed.
+  if ($entity->bundle() == 'class' || $entity->bundle() == 'session') {
+    $map_table = ($entity->bundle() == 'class') ? 'migrate_map_activenet_classes_import' : 'migrate_map_activenet_sessions_import';
+    $connection = \Drupal::database();
+    $connection->delete($map_table)
+      ->condition("$map_table.destid1", $entity->id())
+      ->execute();
+  }
 }
