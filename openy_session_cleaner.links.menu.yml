@@ -1,0 +1,5 @@
+openy_session_cleaner.config:
+  title: Open Y Session Cleaner Settings
+  route_name: openy_session_cleaner.settings
+  parent: system.admin_config_system
+  description: 'Open Y session cleaner configuration.'

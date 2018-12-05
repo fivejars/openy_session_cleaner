@@ -32,7 +32,7 @@ class CleanerSettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
-    $config = $this->config('activenet_wrapper.settings');
+    $config = $this->config('openy_session_cleaner.settings');
 
     $form['limit'] = [
       '#type' => 'textfield',
