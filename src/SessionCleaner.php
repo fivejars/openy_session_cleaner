@@ -97,10 +97,18 @@ class SessionCleaner {
    *   Array of the sessions NIDs or FALSE.
    */
   public function getOutdatedSessions($limit = 20) {
-    $query = $this->connection->select('paragraph__field_session_time_date', 'pstd');
-    $query->where('pstd.field_session_time_date_end_value < CURRENT_DATE()');
-    $query->innerJoin('node__field_session_time', 'nfst', 'pstd.entity_id = nfst.field_session_time_target_id');
+    // Each session can contain several 'Session Time' entries.
+    // So we should check max end date.
+    $sub_query = $this->connection->select('paragraph__field_session_time_date', 'pfstd');
+    $sub_query->addField('st', 'entity_id', 'p_nid');
+    $sub_query->addExpression('MAX(pfstd.field_session_time_date_end_value)', 'max_date');
+    $sub_query->innerJoin('node__field_session_time', 'st', 'pfstd.entity_id = st.field_session_time_target_id');
+    $sub_query->groupBy('st.entity_id');
+
+    $query = $this->connection->select('node__field_session_time', 'nfst');
     $query->addField('nfst', 'entity_id');
+    $query->where('md.max_date < CURRENT_DATE()');
+    $query->innerJoin($sub_query, 'md', 'p_nid = nfst.entity_id');
     $query->range(0, $limit);
 
     return $query->execute()->fetchCol();
