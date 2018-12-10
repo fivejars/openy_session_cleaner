@@ -9,6 +9,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\node\NodeInterface;
 
 /**
  * Class SessionCleaner.
@@ -151,6 +152,35 @@ class SessionCleaner {
       $storage->delete($entities);
       $this->saveLog($entities);
     }
+  }
+
+  /**
+   * Gets active sessions for the given class.
+   *
+   * @param $class_nid
+   *   The class NID.
+   *
+   * @return mixed
+   *   The array of active sessions for given class.
+   */
+  public function getClassActiveSessions($class_nid) {
+    $sub_query = $this->connection->select('paragraph__field_session_time_date', 'pfstd');
+    $sub_query->addField('st', 'entity_id', 'p_nid');
+    $sub_query->addExpression('MAX(pfstd.field_session_time_date_end_value)', 'max_date');
+    $sub_query->innerJoin('node__field_session_time', 'st', 'pfstd.entity_id = st.field_session_time_target_id');
+    $sub_query->groupBy('st.entity_id');
+
+    $query = $this->connection->select('node__field_session_time', 'nfst');
+    $query->addField('nfst', 'entity_id');
+    $query->condition('nfsc.field_session_class_target_id', $class_nid);
+    $query->condition('nfd.status', NodeInterface::PUBLISHED);
+    $query->condition('nfd.type', 'session');
+    $query->where('md.max_date >= CURRENT_DATE()');
+    $query->innerJoin('node__field_session_class', 'nfsc', 'nfst.entity_id = nfsc.entity_id');
+    $query->innerJoin($sub_query, 'md', 'p_nid = nfst.entity_id');
+    $query->innerJoin('node_field_data', 'nfd', 'nfst.entity_id = nfd.nid');
+
+    return $query->execute()->fetchCol();
   }
 
   /**

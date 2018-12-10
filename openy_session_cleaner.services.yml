@@ -2,3 +2,8 @@ services:
   openy_session_cleaner.cleaner:
     class: Drupal\openy_session_cleaner\SessionCleaner
     arguments: ['@database', '@entity_type.manager', '@config.factory', '@logger.factory']
+  openy_session_cleaner.request_subscriber:
+    class: '\Drupal\openy_session_cleaner\EventSubscriber\OpenYCleanerRequestSubscriber'
+    arguments: ['@current_route_match', '@openy_session_cleaner.cleaner']
+    tags:
+      - { name: 'event_subscriber' }
