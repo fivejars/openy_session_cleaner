@@ -81,7 +81,14 @@ class SessionCleaner {
     if ($sessions) {
       $this->delete($sessions);
     }
-
+    $sessions = $this->getPassedRegistrationOutdatedSessions($limit);
+    if ($sessions) {
+      $this->delete($sessions);
+    }
+    $sessions = $this->getNoAppointmentsDefaultSessions($limit);
+    if ($sessions) {
+      $this->delete($sessions);
+    }
     $classes = $this->getOutdatedClasses($limit);
     if ($classes) {
       $this->delete($classes);
@@ -111,8 +118,57 @@ class SessionCleaner {
     $query->where('md.max_date < CURRENT_DATE()');
     $query->innerJoin($sub_query, 'md', 'p_nid = nfst.entity_id');
     $query->range(0, $limit);
-
     return $query->execute()->fetchCol();
+  }
+
+  /**
+   * Gets outdated sessions NIDs with passed registration date.
+   *
+   * Get session for which registration date (personal and online) has passed.
+   *
+   * @param int $limit
+   *   Query limit.
+   *
+   * @return mixed
+   *   Array of the sessions NIDs or FALSE.
+   */
+  public function getPassedRegistrationOutdatedSessions($limit = 20) {
+    $query = $this->connection->select('node__field_standard_registration_date', 'nfsrd')->fields('nfsrd');
+    $query->innerJoin('node__field_online_registration_date', 'nford',
+      'nfsrd.entity_id = nford.entity_id');
+    $query->where('nfsrd.field_standard_registration_date_end_value < CURRENT_DATE() AND  nford.field_online_registration_date_end_value < CURRENT_DATE()');
+    $query->range(0, $limit);
+    return $query->execute()->fetchCol(2);
+  }
+
+  /**
+   * Gets nids array for sessions with default date and empty appointments.
+   *
+   * Get sessions for which start and finish registration date
+   * (personal and online) has default values and it not contain session
+   * time paragraph as target.
+   *
+   * @param int $limit
+   *   Query limit.
+   *
+   * @return mixed
+   *   Array of the sessions NIDs or FALSE.
+   */
+  public function getNoAppointmentsDefaultSessions($limit = 20) {
+    $query = $this->connection->select('node__field_standard_registration_date', 'nfsrd')->fields('nfsrd');
+    $query->innerJoin('node__field_online_registration_date', 'nford',
+      'nfsrd.entity_id = nford.entity_id');
+    $query->where('nfsrd.field_standard_registration_date_end_value = \'2050-01-01T05:00:00\' AND  nford.field_online_registration_date_end_value = \'2050-01-01T05:00:00\'');
+    $sessions_with_default_dates = $query->execute()->fetchCol(2);
+
+    $query = $this->connection->select('node__field_session_time', 'fst')->fields('fst');
+    $sessions_with_times = $query->execute()->fetchCol(2);
+    foreach ($sessions_with_default_dates as $key => $session) {
+      if (in_array($session, $sessions_with_times)) {
+        unset($sessions_with_default_dates[$key]);
+      }
+    }
+    return array_slice($sessions_with_default_dates, 0, $limit);
   }
 
   /**
@@ -143,6 +199,7 @@ class SessionCleaner {
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Core\Entity\EntityStorageException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
   public function delete(array $nids) {
     $storage = $this->entityTypeManager->getStorage('node');
@@ -157,7 +214,7 @@ class SessionCleaner {
   /**
    * Gets active sessions for the given class.
    *
-   * @param $class_nid
+   * @param string $class_nid
    *   The class NID.
    *
    * @return mixed
@@ -191,7 +248,7 @@ class SessionCleaner {
    */
   protected function saveLog(array $entities) {
     /** @var \Drupal\node\Entity\Node[] $entities */
-    $log = $this->formatPlural(count($entities),'1 node has been removed:', '@count nodes have been removed:')->__toString();
+    $log = $this->formatPlural(count($entities), '1 node has been removed:', '@count nodes have been removed:')->__toString();
 
     $logs = [];
     $format = "%s '%s' (%d)";
