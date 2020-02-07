@@ -104,7 +104,7 @@ class SessionCleaner {
    * @return mixed
    *   Array of the sessions NIDs or FALSE.
    */
-  public function getOutdatedSessions($limit = 20) {
+  public function getOutdatedSessions($limit = 10) {
     // Each session can contain several 'Session Time' entries.
     // So we should check max end date.
     $sub_query = $this->connection->select('paragraph__field_session_time_date', 'pfstd');
@@ -132,13 +132,15 @@ class SessionCleaner {
    * @return mixed
    *   Array of the sessions NIDs or FALSE.
    */
-  public function getPassedRegistrationOutdatedSessions($limit = 20) {
-    $query = $this->connection->select('node__field_standard_registration_date', 'nfsrd')->fields('nfsrd');
+  public function getPassedRegistrationOutdatedSessions($limit = 10) {
+    $query = $this->connection
+      ->select('node__field_standard_registration_date', 'nfsrd')
+      ->fields('nfsrd', ['entity_id']);
     $query->innerJoin('node__field_online_registration_date', 'nford',
       'nfsrd.entity_id = nford.entity_id');
     $query->where('nfsrd.field_standard_registration_date_end_value < CURRENT_DATE() AND  nford.field_online_registration_date_end_value < CURRENT_DATE()');
     $query->range(0, $limit);
-    return $query->execute()->fetchCol(2);
+    return $query->execute()->fetchCol();
   }
 
   /**
@@ -154,21 +156,17 @@ class SessionCleaner {
    * @return mixed
    *   Array of the sessions NIDs or FALSE.
    */
-  public function getNoAppointmentsDefaultSessions($limit = 20) {
-    $query = $this->connection->select('node__field_standard_registration_date', 'nfsrd')->fields('nfsrd');
-    $query->innerJoin('node__field_online_registration_date', 'nford',
-      'nfsrd.entity_id = nford.entity_id');
-    $query->where('nfsrd.field_standard_registration_date_end_value = \'2050-01-01T05:00:00\' AND  nford.field_online_registration_date_end_value = \'2050-01-01T05:00:00\'');
-    $sessions_with_default_dates = $query->execute()->fetchCol(2);
-
-    $query = $this->connection->select('node__field_session_time', 'fst')->fields('fst');
-    $sessions_with_times = $query->execute()->fetchCol(2);
-    foreach ($sessions_with_default_dates as $key => $session) {
-      if (in_array($session, $sessions_with_times)) {
-        unset($sessions_with_default_dates[$key]);
-      }
-    }
-    return array_slice($sessions_with_default_dates, 0, $limit);
+  public function getNoAppointmentsDefaultSessions($limit = 10) {
+    // TODO: add limit by placeholder.
+    $query = $this->connection->query("SELECT nfsrd.entity_id
+      FROM {node__field_standard_registration_date} AS nfsrd
+        INNER JOIN {node__field_online_registration_date} as nford
+        ON (nford.entity_id = nfsrd.entity_id )
+      WHERE nfsrd.field_standard_registration_date_end_value = '2050-01-01T05:00:00' AND
+        nford.field_online_registration_date_end_value = '2050-01-01T05:00:00'
+        AND NOT EXISTS (SELECT * FROM node__field_session_time WHERE node__field_session_time.entity_id = nford.entity_id ) LIMIT 10");
+    $result = $query->fetchCol();
+    return !empty($result) ? $result : FALSE;
   }
 
   /**
@@ -180,7 +178,7 @@ class SessionCleaner {
    * @return mixed
    *   Array of the classes NIDs or FALSE.
    */
-  public function getOutdatedClasses($limit = 20) {
+  public function getOutdatedClasses($limit = 10) {
     $query = $this->connection->select('node', 'n');
     $query->condition('n.type', 'class');
     $query->leftJoin('node__field_session_class', 'nfsc', 'nfsc.field_session_class_target_id = n.nid');
