@@ -12,9 +12,7 @@ use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\node\NodeInterface;
 
 /**
- * Class SessionCleaner.
- *
- * @package Drupal\openy_session_cleaner
+ * Session Cleaner service.
  */
 class SessionCleaner {
 
@@ -23,30 +21,30 @@ class SessionCleaner {
   /**
    * Watchdog logger channel for openy_session_cleaner.
    *
-   * @var LoggerChannelInterface
+   * @var \Drupal\Core\Logger\LoggerChannelInterface
    */
-  protected $logger;
+  protected LoggerChannelInterface $logger;
 
   /**
    * The database connection.
    *
    * @var \Drupal\Core\Database\Connection
    */
-  protected $connection;
+  protected Connection $connection;
 
   /**
    * The entity type manager.
    *
    * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  protected $entityTypeManager;
+  protected EntityTypeManagerInterface $entityTypeManager;
 
   /**
    * The config factory.
    *
    * @var \Drupal\Core\Config\ConfigFactoryInterface
    */
-  protected $configFactory;
+  protected ConfigFactoryInterface $configFactory;
 
   /**
    * SessionCleaner constructor.
@@ -72,27 +70,55 @@ class SessionCleaner {
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Core\Entity\EntityStorageException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
   public function clean() {
     $config = $this->configFactory->get('openy_session_cleaner.settings');
     $limit = $config->get('limit');
+    $remove_without_schedule = $config->get('remove_sessions_without_time');
+    $remove_empty_classes = $config->get('remove_empty_classes');
+
+    if ($remove_without_schedule) {
+      $sessions = $this->getSessionsWithoutSchedule($limit * 2);
+      if ($sessions) {
+        $this->delete($sessions);
+      }
+    }
 
     $sessions = $this->getOutdatedSessions($limit);
     if ($sessions) {
       $this->delete($sessions);
     }
-    $sessions = $this->getPassedRegistrationOutdatedSessions($limit);
-    if ($sessions) {
-      $this->delete($sessions);
+
+    if ($remove_empty_classes) {
+      $classes = $this->getOutdatedClasses($limit);
+      if ($classes) {
+        $this->delete($classes);
+      }
     }
-    $sessions = $this->getNoAppointmentsDefaultSessions($limit);
-    if ($sessions) {
-      $this->delete($sessions);
-    }
-    $classes = $this->getOutdatedClasses($limit);
-    if ($classes) {
-      $this->delete($classes);
-    }
+  }
+
+  /**
+   * Gets NIDs of the sessions that have no schedule.
+   *
+   * @param int $limit
+   *   Query limit.
+   *
+   * @return mixed
+   *   Array of the sessions NIDs or FALSE.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   */
+  public function getSessionsWithoutSchedule(int $limit = 20) {
+    $query = $this->entityTypeManager
+      ->getStorage('node')
+      ->getQuery()
+      ->condition('type', 'session')
+      ->notExists('field_session_time')
+      ->accessCheck(FALSE)
+      ->range(0, $limit);
+    return $query->execute();
   }
 
   /**
@@ -104,7 +130,7 @@ class SessionCleaner {
    * @return mixed
    *   Array of the sessions NIDs or FALSE.
    */
-  public function getOutdatedSessions($limit = 10) {
+  public function getOutdatedSessions(int $limit = 20) {
     // Each session can contain several 'Session Time' entries.
     // So we should check max end date.
     $sub_query = $this->connection->select('paragraph__field_session_time_date', 'pfstd');
@@ -122,54 +148,6 @@ class SessionCleaner {
   }
 
   /**
-   * Gets outdated sessions NIDs with passed registration date.
-   *
-   * Get session for which registration date (personal and online) has passed.
-   *
-   * @param int $limit
-   *   Query limit.
-   *
-   * @return mixed
-   *   Array of the sessions NIDs or FALSE.
-   */
-  public function getPassedRegistrationOutdatedSessions($limit = 10) {
-    $query = $this->connection
-      ->select('node__field_standard_registration_date', 'nfsrd')
-      ->fields('nfsrd', ['entity_id']);
-    $query->innerJoin('node__field_online_registration_date', 'nford',
-      'nfsrd.entity_id = nford.entity_id');
-    $query->where('nfsrd.field_standard_registration_date_end_value < CURRENT_DATE() AND  nford.field_online_registration_date_end_value < CURRENT_DATE()');
-    $query->range(0, $limit);
-    return $query->execute()->fetchCol();
-  }
-
-  /**
-   * Gets nids array for sessions with default date and empty appointments.
-   *
-   * Get sessions for which start and finish registration date
-   * (personal and online) has default values and it not contain session
-   * time paragraph as target.
-   *
-   * @param int $limit
-   *   Query limit.
-   *
-   * @return mixed
-   *   Array of the sessions NIDs or FALSE.
-   */
-  public function getNoAppointmentsDefaultSessions($limit = 10) {
-    // TODO: add limit by placeholder.
-    $query = $this->connection->query("SELECT nfsrd.entity_id
-      FROM {node__field_standard_registration_date} AS nfsrd
-        INNER JOIN {node__field_online_registration_date} as nford
-        ON (nford.entity_id = nfsrd.entity_id )
-      WHERE nfsrd.field_standard_registration_date_end_value = '2050-01-01T05:00:00' AND
-        nford.field_online_registration_date_end_value = '2050-01-01T05:00:00'
-        AND NOT EXISTS (SELECT * FROM node__field_session_time WHERE node__field_session_time.entity_id = nford.entity_id ) LIMIT 10");
-    $result = $query->fetchCol();
-    return !empty($result) ? $result : FALSE;
-  }
-
-  /**
    * Gets classes without sessions.
    *
    * @param int $limit
@@ -178,7 +156,7 @@ class SessionCleaner {
    * @return mixed
    *   Array of the classes NIDs or FALSE.
    */
-  public function getOutdatedClasses($limit = 10) {
+  public function getOutdatedClasses(int $limit = 20) {
     $query = $this->connection->select('node', 'n');
     $query->condition('n.type', 'class');
     $query->leftJoin('node__field_session_class', 'nfsc', 'nfsc.field_session_class_target_id = n.nid');
@@ -196,8 +174,8 @@ class SessionCleaner {
    *   Array of NIDs to remove.
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
-   * @throws \Drupal\Core\Entity\EntityStorageException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function delete(array $nids) {
     $storage = $this->entityTypeManager->getStorage('node');
@@ -212,13 +190,13 @@ class SessionCleaner {
   /**
    * Gets active sessions for the given class.
    *
-   * @param string $class_nid
+   * @param int $class_nid
    *   The class NID.
    *
    * @return mixed
    *   The array of active sessions for given class.
    */
-  public function getClassActiveSessions($class_nid) {
+  public function getClassActiveSessions(int $class_nid) {
     $sub_query = $this->connection->select('paragraph__field_session_time_date', 'pfstd');
     $sub_query->addField('st', 'entity_id', 'p_nid');
     $sub_query->addExpression('MAX(pfstd.field_session_time_date_end_value)', 'max_date');

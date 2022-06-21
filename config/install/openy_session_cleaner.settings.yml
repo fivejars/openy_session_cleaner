@@ -1,1 +1,3 @@
 limit: 50
+remove_sessions_without_time: 0
+remove_empty_classes: 0

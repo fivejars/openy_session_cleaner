@@ -1,8 +1,12 @@
 <?php
 
+/**
+ * @file
+ * Open Y session cleaner.
+ */
+
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
-use Drupal\openy_importer\ImporterWrapper;
 
 /**
  * Implements hook_help().
@@ -23,7 +27,7 @@ function openy_session_cleaner_help($route_name, RouteMatchInterface $route_matc
 function openy_session_cleaner_cron() {
   /** @var \Drupal\Core\Lock\LockBackendInterface $lock */
   $lock = \Drupal::service('lock');
-  if ($lock->lockMayBeAvailable(ImporterWrapper::LOCK_NAME)) {
+  if ($lock->lockMayBeAvailable('openy_session_cleaner')) {
     /** @var Drupal\openy_session_cleaner\SessionCleaner $cleaner */
     $cleaner = \Drupal::service('openy_session_cleaner.cleaner');
     $cleaner->clean();

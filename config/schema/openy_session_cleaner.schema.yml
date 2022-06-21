@@ -4,4 +4,10 @@ openy_session_cleaner.config:
   mapping:
     limit:
       type: text
-      label: 'Items per cron run'
+      label: 'Items per cron run.'
+    remove_sessions_without_time:
+      type: boolean
+      label: 'Removes sessions with empty datetime data.'
+    remove_empty_classes:
+      type: boolean
+      label: 'Removes classes without any sessions attached.'

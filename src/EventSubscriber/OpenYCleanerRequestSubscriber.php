@@ -12,9 +12,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * Class OpenYCleanerRequestSubscriber.
- *
- * @package Drupal\openy_session_cleaner\EventSubscriber
+ * Subscribes to Request events.
  */
 class OpenYCleanerRequestSubscriber implements EventSubscriberInterface {
 
@@ -23,14 +21,14 @@ class OpenYCleanerRequestSubscriber implements EventSubscriberInterface {
    *
    * @var \Drupal\Core\Routing\RouteMatchInterface
    */
-  protected $routeMatch;
+  protected RouteMatchInterface $routeMatch;
 
   /**
    * The Open Y sessions cleaner service.
    *
    * @var \Drupal\openy_session_cleaner\SessionCleaner
    */
-  protected $sessionCleaner;
+  protected SessionCleaner $sessionCleaner;
 
   /**
    * OpenYCleanerRequestSubscriber constructor.
@@ -48,7 +46,7 @@ class OpenYCleanerRequestSubscriber implements EventSubscriberInterface {
   /**
    * {@inheritdoc}
    */
-  public static function getSubscribedEvents() {
+  public static function getSubscribedEvents(): array {
     $events[KernelEvents::REQUEST][] = ['onRequest'];
     return $events;
   }
@@ -66,7 +64,7 @@ class OpenYCleanerRequestSubscriber implements EventSubscriberInterface {
       /** @var \Drupal\node\NodeInterface $node */
       $node = $this->routeMatch->getParameter('node');
 
-      if ($node && $node instanceof NodeInterface && $node->getType() == 'class') {
+      if ($node instanceof NodeInterface && $node->getType() == 'class') {
         $active_session = $this->sessionCleaner->getClassActiveSessions($node->id());
         if (empty($active_session)) {
           throw new NotFoundHttpException();
