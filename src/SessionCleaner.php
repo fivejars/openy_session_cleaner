@@ -76,7 +76,7 @@ class SessionCleaner {
    */
   public function clean(): void {
     $config = $this->configFactory->get('openy_session_cleaner.settings');
-    $limit = $config->get('limit');
+    $limit = (int) $config->get('limit');
     $remove_without_schedule = $config->get('remove_sessions_without_time');
     $remove_empty_classes = $config->get('remove_empty_classes');
 
