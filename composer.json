@@ -3,8 +3,8 @@
     "description": "Removes outdated Open Y classes and sessions.",
     "type": "drupal-module",
     "require": {
-        "php": "^7.4 || ^8.0 || ^8.1",
-        "ymcatwincities/openy": "9.* || dev-9.x-2.x",
+        "php": "^8.0 || ^8.1",
+        "ycloudyusa/yusaopeny": "^10",
         "ynorth-projects/openy_node_session": "^1.1.0",
         "open-y-subprojects/openy_features": "^1.5"
     },
