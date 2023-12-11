@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\openy_session_cleaner;
 
 use Drupal\Component\Utility\Unicode;
@@ -72,7 +74,7 @@ class SessionCleaner {
    * @throws \Drupal\Core\Entity\EntityStorageException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
-  public function clean() {
+  public function clean(): void {
     $config = $this->configFactory->get('openy_session_cleaner.settings');
     $limit = $config->get('limit');
     $remove_without_schedule = $config->get('remove_sessions_without_time');
@@ -104,13 +106,13 @@ class SessionCleaner {
    * @param int $limit
    *   Query limit.
    *
-   * @return mixed
-   *   Array of the sessions NIDs or FALSE.
+   * @return array|int
+   *   An integer for count queries or an array of ids.
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
-  public function getSessionsWithoutSchedule(int $limit = 20) {
+  public function getSessionsWithoutSchedule(int $limit = 20): int|array {
     $query = $this->entityTypeManager
       ->getStorage('node')
       ->getQuery()
@@ -127,10 +129,10 @@ class SessionCleaner {
    * @param int $limit
    *   Query limit.
    *
-   * @return mixed
-   *   Array of the sessions NIDs or FALSE.
+   * @return array
+   *   An indexed array, or an empty array if there is no result set.
    */
-  public function getOutdatedSessions(int $limit = 20) {
+  public function getOutdatedSessions(int $limit = 20): array {
     // Each session can contain several 'Session Time' entries.
     // So we should check max end date.
     $sub_query = $this->connection->select('paragraph__field_session_time_date', 'pfstd');
@@ -153,10 +155,10 @@ class SessionCleaner {
    * @param int $limit
    *   Query limit.
    *
-   * @return mixed
-   *   Array of the classes NIDs or FALSE.
+   * @return array
+   *   An indexed array, or an empty array if there is no result set.
    */
-  public function getOutdatedClasses(int $limit = 20) {
+  public function getOutdatedClasses(int $limit = 20): array {
     $query = $this->connection->select('node', 'n');
     $query->condition('n.type', 'class');
     $query->leftJoin('node__field_session_class', 'nfsc', 'nfsc.field_session_class_target_id = n.nid');
@@ -177,7 +179,7 @@ class SessionCleaner {
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
-  public function delete(array $nids) {
+  public function delete(array $nids): void {
     $storage = $this->entityTypeManager->getStorage('node');
     /** @var \Drupal\node\Entity\Node[] $entities */
     $entities = $storage->loadMultiple($nids);
@@ -193,10 +195,10 @@ class SessionCleaner {
    * @param int $class_nid
    *   The class NID.
    *
-   * @return mixed
+   * @return array
    *   The array of active sessions for given class.
    */
-  public function getClassActiveSessions(int $class_nid) {
+  public function getClassActiveSessions(int $class_nid): array {
     $sub_query = $this->connection->select('paragraph__field_session_time_date', 'pfstd');
     $sub_query->addField('st', 'entity_id', 'p_nid');
     $sub_query->addExpression('MAX(pfstd.field_session_time_date_end_value)', 'max_date');
@@ -222,7 +224,7 @@ class SessionCleaner {
    * @param array $entities
    *   Array of removed entities.
    */
-  protected function saveLog(array $entities) {
+  protected function saveLog(array $entities): void {
     /** @var \Drupal\node\Entity\Node[] $entities */
     $log = $this->formatPlural(count($entities), '1 node has been removed:', '@count nodes have been removed:')->__toString();
 
