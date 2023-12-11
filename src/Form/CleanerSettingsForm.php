@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\openy_session_cleaner\Form;
 
 use Drupal\Core\Form\ConfigFormBase;
@@ -60,7 +62,7 @@ class CleanerSettingsForm extends ConfigFormBase {
   /**
    * {@inheritdoc}
    */
-  public function submitForm(array &$form, FormStateInterface $form_state) {
+  public function submitForm(array &$form, FormStateInterface $form_state): void {
     $config = $this->configFactory->getEditable('openy_session_cleaner.settings');
     $config->set('limit', $form_state->getValue('limit'));
     $config->set('remove_sessions_without_time', $form_state->getValue('remove_sessions_without_time'));

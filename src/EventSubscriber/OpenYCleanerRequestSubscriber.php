@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\openy_session_cleaner\EventSubscriber;
 
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Routing\RouteObjectInterface;
 use Drupal\node\NodeInterface;
 use Drupal\openy_session_cleaner\SessionCleaner;
-use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -57,7 +59,7 @@ class OpenYCleanerRequestSubscriber implements EventSubscriberInterface {
    * @param \Symfony\Component\HttpKernel\Event\RequestEvent $event
    *   The event triggered by the request.
    */
-  public function onRequest(RequestEvent $event) {
+  public function onRequest(RequestEvent $event): void {
     $request = $event->getRequest();
     $route = $request->attributes->get(RouteObjectInterface::ROUTE_OBJECT);
     if ($route && !$route->getOption('_admin_route')) {
