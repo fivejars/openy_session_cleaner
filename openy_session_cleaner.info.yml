@@ -1,7 +1,7 @@
 name: Open Y Classes & Session cleaner for ActiveNet integration.
 type: module
 description: Removes outdated classes and sessions.
-core_version_requirement: ^8 || ^9
+core_version_requirement: ^9 || ^10
 package: OpenY
 dependencies:
   - openy_node_class:openy_node_class
