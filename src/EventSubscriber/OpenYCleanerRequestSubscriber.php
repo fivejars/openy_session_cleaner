@@ -67,7 +67,7 @@ class OpenYCleanerRequestSubscriber implements EventSubscriberInterface {
       $node = $this->routeMatch->getParameter('node');
 
       if ($node instanceof NodeInterface && $node->getType() == 'class') {
-        $active_session = $this->sessionCleaner->getClassActiveSessions($node->id());
+        $active_session = $this->sessionCleaner->getClassActiveSessions((int) $node->id());
         if (empty($active_session)) {
           throw new NotFoundHttpException();
         }
